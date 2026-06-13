@@ -1,0 +1,2083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RYZN</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<link rel="stylesheet" href="style.css"/>
+<style>
+/* ── LOGIN / SIGNUP SCREEN FIX ── */
+
+/* Full-screen centred flex container */
+#screen-login {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  min-height: 100vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+/* Hero section takes up remaining space and centres content */
+.login-hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 48px 24px 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-logo {
+  font-family: var(--font-cond, 'Barlow Condensed', sans-serif);
+  font-size: clamp(52px, 14vw, 80px);
+  font-weight: 800;
+  color: var(--acid, #c8ff00);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.login-sub {
+  font-size: 14px;
+  color: var(--text2, #888);
+  margin-bottom: 28px;
+}
+
+/* Tab bar — side-by-side, equal width */
+.login-tabs {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+}
+
+.login-tab {
+  flex: 1;
+  padding: 10px 0;
+  border-radius: 10px;
+  border: 1.5px solid var(--border, #2a2a2a);
+  background: transparent;
+  color: var(--text2, #888);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, border-color 0.18s;
+}
+
+.login-tab.active {
+  background: var(--acid, #c8ff00);
+  color: #000;
+  border-color: var(--acid, #c8ff00);
+}
+
+/* Bottom card */
+.login-bottom {
+  padding: 24px 24px 32px;
+  background: var(--card, #111);
+  border-top: 1px solid var(--border, #2a2a2a);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+}
+
+/* Form — full-width fields, consistent spacing */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+/* Inputs fill the full width */
+.login-field .ob-input,
+#screen-login .ob-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Error message */
+.login-error {
+  color: #ff5555;
+  font-size: 13px;
+  min-height: 18px;
+  text-align: center;
+}
+
+/* Primary action button — full width */
+.btn-login {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  background: var(--acid, #c8ff00);
+  color: #000;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity 0.18s;
+}
+
+.btn-login:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Forgot password link */
+.login-forgot {
+  text-align: center;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--text2, #888);
+}
+
+.login-forgot span {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── RESPONSIVE ── */
+@media (min-width: 480px) {
+  .login-hero {
+    padding: 64px 32px 40px;
+  }
+  .login-bottom {
+    padding: 32px 32px 40px;
+  }
+  .login-form {
+    max-width: 420px;
+  }
+}
+
+@media (min-width: 768px) {
+  #screen-login {
+    justify-content: center;
+    align-items: center;
+    background: var(--bg, #0a0a0a);
+  }
+  .login-hero {
+    flex: none;
+    padding: 40px 40px 24px;
+    border-radius: 20px 20px 0 0;
+  }
+  .login-bottom {
+    border-radius: 0 0 20px 20px;
+    border: 1px solid var(--border, #2a2a2a);
+    border-top: none;
+  }
+  /* Wrap hero + bottom in a centred card on desktop */
+  #screen-login > .login-hero,
+  #screen-login > .login-bottom {
+    width: 100%;
+    max-width: 460px;
+  }
+}
+</style>
+<script type="module">
+  import { initializeApp }    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+           onAuthStateChanged, signOut }
+                              from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  import { getFirestore, doc, setDoc, getDoc, collection,
+           getDocs, query, orderBy, limit, serverTimestamp, writeBatch }
+                              from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+  const firebaseConfig = {
+    apiKey:            "AIzaSyDCR4AcM_mipd-iGYId5QLVkubHc27P9To",
+    authDomain:        "ryzn-77c71.firebaseapp.com",
+    projectId:         "ryzn-77c71",
+    storageBucket:     "ryzn-77c71.firebasestorage.app",
+    messagingSenderId: "1044237438926",
+    appId:             "1:1044237438926:web:7579afdc239778fa12a59f"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+
+  // Expose everything on window._fb so non-module scripts can call Firebase
+  window._fb = {
+    auth, db,
+    doc, setDoc, getDoc, collection, getDocs, query,
+    orderBy, limit, serverTimestamp, writeBatch,
+    createUserWithEmailAndPassword, signInWithEmailAndPassword,
+    onAuthStateChanged, signOut,
+  };
+
+  // Helper: show login screen (works even before app JS is ready)
+  function showLogin() {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
+    const nav = document.getElementById('bottom-nav');
+    if (nav) nav.style.display = 'none';
+    const loginScreen = document.getElementById('screen-login');
+    if (loginScreen) loginScreen.classList.add('active');
+  }
+
+  // Show login immediately on page load — onAuthStateChanged will redirect if already logged in
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', showLogin);
+  } else {
+    showLogin();
+  }
+
+  // Auth state listener — fires once on page load and on every sign-in/out
+  onAuthStateChanged(auth, async (firebaseUser) => {
+    if (firebaseUser) {
+      window._fbUser = firebaseUser;
+      try {
+        const snap = await getDoc(doc(db, 'users', firebaseUser.uid, 'profile', 'data'));
+        if (snap.exists()) {
+          // Existing user — load data and go to home
+          const profile = snap.data();
+          if (typeof save === 'function') {
+            save('user', { name: profile.name, email: profile.email, joined: profile.joined });
+          }
+          if (typeof cloudPull === 'function') await cloudPull(firebaseUser.uid);
+          if (typeof initApp === 'function') initApp(typeof load === 'function' ? load('user', {}) : {});
+          if (typeof renderGoals === 'function') renderGoals();
+          if (typeof renderHistory === 'function') renderHistory();
+          if (typeof renderLeaderboard === 'function') renderLeaderboard();
+          if (typeof renderNotifications === 'function') renderNotifications();
+          if (typeof renderAnalytics === 'function') renderAnalytics();
+          const nav = document.getElementById('bottom-nav');
+          if (nav) nav.style.display = 'flex';
+          if (typeof goTo === 'function') goTo('home');
+          setTimeout(() => { if (typeof checkAndMigrateData === 'function') checkAndMigrateData(); }, 1500);
+        } else {
+          // New user — send to onboarding
+          window._fbNewUser = true;
+          const nav = document.getElementById('bottom-nav');
+          if (nav) nav.style.display = 'none';
+          if (typeof goTo === 'function') goTo('onboarding');
+        }
+      } catch (err) {
+        console.error('Firebase profile load error:', err);
+        showLogin();
+      }
+    } else {
+      // Signed out
+      window._fbUser    = null;
+      window._fbNewUser = false;
+      showLogin();
+    }
+  });
+</script>
+</head>
+<body>
+<canvas id="confetti-canvas" style="position:fixed;inset:0;pointer-events:none;z-index:1000;display:none"></canvas>
+<div class="toast" id="toast"></div>
+<div class="app" id="app">
+
+<!-- ═══ LOGIN ═══ -->
+<div class="screen" id="screen-login">
+  <div class="login-hero">
+    <div class="login-grid"></div>
+    <div class="login-glow"></div>
+    <div class="login-logo">RYZN</div>
+    <div class="login-sub">Performance. Clarity. Every day.</div>
+    <div class="login-tabs">
+      <button class="login-tab active" id="tab-signin" onclick="switchLoginTab('signin')">Sign In</button>
+      <button class="login-tab" id="tab-signup" onclick="switchLoginTab('signup')">Sign Up</button>
+    </div>
+  </div>
+  <div class="login-bottom">
+    <div class="login-form">
+      <div class="login-field">
+        <div class="ob-label">Email</div>
+        <input class="ob-input" id="login-email" type="email" placeholder="you@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')handleAuth()"/>
+      </div>
+      <div class="login-field" id="signup-name-field" style="display:none">
+        <div class="ob-label">Full Name</div>
+        <input class="ob-input" id="login-fullname" type="text" placeholder="e.g. Alex Johnson" autocomplete="name"/>
+      </div>
+      <div class="login-field">
+        <div class="ob-label">Password</div>
+        <input class="ob-input" id="login-password" type="password" placeholder="Min 6 characters" autocomplete="current-password" onkeydown="if(event.key==='Enter')handleAuth()"/>
+      </div>
+      <div class="login-error" id="login-error"></div>
+      <button class="btn-login" id="login-btn" onclick="handleAuth()">
+        <i class="fa-solid fa-bolt"></i> <span id="login-btn-label">Sign In</span>
+      </button>
+    </div>
+    <div class="login-forgot">
+      <span onclick="handleForgotPassword()">Forgot password?</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ONBOARDING ═══ -->
+<div class="screen" id="screen-onboarding">
+
+  <!-- SLIDE 1: Welcome -->
+  <div class="ob-slide active" id="ob-s1">
+    <div class="ob-hero">
+      <div class="ob-grid"></div>
+      <div class="ob-glow"></div>
+      <div class="ob-logo">RYZN</div>
+      <p class="ob-tagline">Performance. Clarity. Every day.</p>
+      <div class="ob-features">
+        <div class="ob-feat">
+          <div class="ob-feat-ico"><i class="fa-solid fa-chart-line"></i></div>
+          <div class="ob-feat-text">
+            <p>Track your progress</p>
+            <span>Metrics updated in real time</span>
+          </div>
+        </div>
+        <div class="ob-feat">
+          <div class="ob-feat-ico"><i class="fa-solid fa-bullseye"></i></div>
+          <div class="ob-feat-text">
+            <p>Set clear goals</p>
+            <span>Define targets and stay on course</span>
+          </div>
+        </div>
+        <div class="ob-feat">
+          <div class="ob-feat-ico"><i class="fa-solid fa-bolt"></i></div>
+          <div class="ob-feat-text">
+            <p>AI coaching</p>
+            <span>Personalised advice, 24/7</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ob-bottom">
+      <div class="ob-dots">
+        <div class="ob-dot active"></div>
+        <div class="ob-dot"></div>
+        <div class="ob-dot"></div>
+      </div>
+      <button class="btn-primary" onclick="obGoTo(2)">
+        Get Started <i class="fa-solid fa-arrow-right"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: Name & Email -->
+  <div class="ob-slide" id="ob-s2">
+    <div class="ob-hero" style="justify-content:center;align-items:center;text-align:center">
+      <div class="ob-grid"></div>
+      <div class="ob-glow" style="top:-40px;left:-60px;right:auto"></div>
+      <div style="font-family:var(--font-cond,sans-serif);font-size:38px;font-weight:800;color:var(--acid);letter-spacing:-.01em;margin-bottom:8px">Who are you?</div>
+      <p style="font-size:14px;color:var(--text2)">Let's personalise your experience.</p>
+    </div>
+    <div class="ob-bottom">
+      <div class="ob-dots">
+        <div class="ob-dot"></div>
+        <div class="ob-dot active"></div>
+        <div class="ob-dot"></div>
+      </div>
+      <div class="ob-form">
+        <div>
+          <div class="ob-label">Your name</div>
+          <input class="ob-input" id="ob-name" type="text" placeholder="e.g. Alex Johnson" autocomplete="name"/>
+        </div>
+        <div>
+          <div class="ob-label">Email</div>
+          <input class="ob-input" id="ob-email" type="email" placeholder="you@email.com" autocomplete="email"/>
+        </div>
+        <button class="btn-primary" onclick="obGoTo(3)">
+          Continue <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: Focus -->
+  <div class="ob-slide" id="ob-s3">
+    <div class="ob-hero" style="justify-content:center;align-items:center;text-align:center">
+      <div class="ob-grid"></div>
+      <div class="ob-glow" style="bottom:-40px;left:50%;top:auto;transform:translateX(-50%)"></div>
+      <div style="font-family:var(--font-cond,sans-serif);font-size:38px;font-weight:800;color:var(--acid);letter-spacing:-.01em;margin-bottom:8px">What's your focus?</div>
+      <p style="font-size:14px;color:var(--text2)">Pick your primary goals for RYZN.</p>
+    </div>
+    <div class="ob-bottom">
+      <div class="ob-dots">
+        <div class="ob-dot"></div>
+        <div class="ob-dot"></div>
+        <div class="ob-dot active"></div>
+      </div>
+      <div class="ob-form">
+        <div>
+          <div class="ob-label">Choose your focus</div>
+          <div class="ob-cats">
+            <button class="ob-cat active" onclick="obToggleCat(this)">Strength</button>
+            <button class="ob-cat" onclick="obToggleCat(this)">Cardio</button>
+            <button class="ob-cat" onclick="obToggleCat(this)">Weight Loss</button>
+            <button class="ob-cat" onclick="obToggleCat(this)">Nutrition</button>
+            <button class="ob-cat" onclick="obToggleCat(this)">Recovery</button>
+            <button class="ob-cat" onclick="obToggleCat(this)">Mindset</button>
+          </div>
+        </div>
+        <button class="btn-primary" onclick="obFinish()">
+          <i class="fa-solid fa-bolt"></i> Launch RYZN
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ DASHBOARD ═══ -->
+<div class="screen" id="screen-home">
+  <div class="topbar">
+    <div><div class="wordmark">RYZN</div><div class="topbar-sub" id="dash-greeting">Good morning</div></div>
+    <div class="topbar-actions">
+      <button class="icon-btn" onclick="goTo('notifications')" id="notif-btn"><i class="fa-regular fa-bell"></i><div class="notif-badge" id="notif-badge"></div></button>
+    </div>
+  </div>
+  <div class="hero-card">
+    <div class="hero-eyebrow">Today's Status</div>
+    <div class="hero-hl" id="dash-headline">You're performing<br>at your peak.</div>
+    <div class="hero-streak"><i class="fa-solid fa-fire"></i>&nbsp; <span id="streak-label">7-day streak active</span></div>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-tile accent-tile"><div class="tile-row"><div class="tile-ico acid"><i class="fa-solid fa-star"></i></div><span class="tile-badge up">↑ 6</span></div><div class="tile-num" id="stat-score">94</div><div class="tile-lbl">Score</div></div>
+    <div class="stat-tile"><div class="tile-row"><div class="tile-ico green"><i class="fa-solid fa-dumbbell"></i></div><span class="tile-badge up">↑ 2</span></div><div class="tile-num" id="stat-sessions">12</div><div class="tile-lbl">Sessions</div></div>
+    <div class="stat-tile"><div class="tile-row"><div class="tile-ico acid"><i class="fa-solid fa-bolt"></i></div><span class="tile-badge warn">Active</span></div><div class="tile-num" id="stat-streak">7d</div><div class="tile-lbl">Streak</div></div>
+    <div class="stat-tile"><div class="tile-row"><div class="tile-ico"><i class="fa-solid fa-bullseye"></i></div><span class="tile-badge warn">1 left</span></div><div class="tile-num">3/4</div><div class="tile-lbl">Goals Hit</div></div>
+  </div>
+  <div class="cta-strip" onclick="goTo('session')">
+    <div><div class="cta-eyebrow">Ready when you are</div><div class="cta-hl">Start Session</div></div>
+    <div class="cta-circle"><i class="fa-solid fa-play"></i></div>
+  </div>
+  <div class="sh"><div class="sh-lbl">Recent Activity</div><div class="sh-link" onclick="goTo('history')">View all</div></div>
+  <div class="act-list" id="act-list">
+    <div class="act-row"><div class="act-dot"></div><div class="act-body"><p>Morning session completed</p><span>Today · 7:42 AM</span></div><div class="act-pts">+12</div></div>
+    <div class="act-row"><div class="act-dot"></div><div class="act-body"><p>Goal achieved — Consistency</p><span>Yesterday</span></div><div class="act-pts">+25</div></div>
+    <div class="act-row"><div class="act-dot"></div><div class="act-body"><p>Weekly review completed</p><span>Mon · 9:00 AM</span></div><div class="act-pts">+8</div></div>
+    <div class="act-row"><div class="act-dot dim"></div><div class="act-body"><p>Rest day</p><span>Sunday</span></div><div class="act-pts dim">—</div></div>
+  </div>
+</div>
+
+<!-- ═══ SESSION ═══ -->
+<div class="screen" id="screen-session">
+  <div class="topbar">
+    <div><div class="wordmark">RYZN</div><div class="topbar-sub">Live Session</div></div>
+    <button class="icon-btn" onclick="goTo('home')"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="sess-hero">
+    <div class="sess-badge"><div class="pulse"></div> In Progress</div>
+    <div class="sess-name">Strength &amp; Power</div>
+    <div class="sess-meta">Upper Body · Intermediate · 45 min</div>
+  </div>
+  <div class="timer-wrap">
+    <div class="timer-ring">
+      <svg width="172" height="172" viewBox="0 0 172 172">
+        <circle class="tr-bg" cx="86" cy="86" r="78"/>
+        <circle class="tr-fill" cx="86" cy="86" r="78" id="timerCircle"/>
+      </svg>
+      <div class="timer-inner"><div class="timer-num" id="timerDisplay">45:00</div><div class="timer-sub">remaining</div></div>
+    </div>
+  </div>
+  <div class="s-stats">
+    <div class="s-stat"><div class="s-num">4</div><div class="s-lbl">Done</div></div>
+    <div class="s-stat"><div class="s-num" style="color:var(--acid)">3</div><div class="s-lbl">Left</div></div>
+    <div class="s-stat"><div class="s-num" style="color:var(--green)">312</div><div class="s-lbl">Cal</div></div>
+  </div>
+  <div class="sh"><div class="sh-lbl">Exercises</div></div>
+  <div class="ex-list">
+    <div class="ex-row done"><div class="ex-num"><i class="fa-solid fa-check"></i></div><div class="ex-body"><p>Bench Press</p><span>4 × 8 · 80 kg</span></div><i class="fa-solid fa-circle-check ex-chk"></i></div>
+    <div class="ex-row done"><div class="ex-num"><i class="fa-solid fa-check"></i></div><div class="ex-body"><p>Pull-Ups</p><span>3 × 10 · Bodyweight</span></div><i class="fa-solid fa-circle-check ex-chk"></i></div>
+    <div class="ex-row done"><div class="ex-num"><i class="fa-solid fa-check"></i></div><div class="ex-body"><p>Shoulder Press</p><span>4 × 10 · 30 kg</span></div><i class="fa-solid fa-circle-check ex-chk"></i></div>
+    <div class="ex-row done"><div class="ex-num"><i class="fa-solid fa-check"></i></div><div class="ex-body"><p>Barbell Row</p><span>3 × 12 · 70 kg</span></div><i class="fa-solid fa-circle-check ex-chk"></i></div>
+    <div class="ex-row current"><div class="ex-num">5</div><div class="ex-body"><p>Tricep Dips</p><span>3 × 15 · Bodyweight</span></div><i class="fa-regular fa-circle ex-chk"></i></div>
+    <div class="ex-row"><div class="ex-num">6</div><div class="ex-body"><p>Bicep Curls</p><span>3 × 12 · 20 kg</span></div><i class="fa-regular fa-circle ex-chk"></i></div>
+    <div class="ex-row"><div class="ex-num">7</div><div class="ex-body"><p>Face Pulls</p><span>3 × 15 · Cable</span></div><i class="fa-regular fa-circle ex-chk"></i></div>
+  </div>
+  <div class="sess-btns">
+    <button class="btn-pause" id="pauseBtn" onclick="togglePause()"><i class="fa-solid fa-pause"></i> Pause</button>
+    <button class="btn-end" onclick="endSession()"><i class="fa-solid fa-flag-checkered"></i> End Session</button>
+  </div>
+</div>
+
+<!-- ═══ SESSION HISTORY ═══ -->
+<div class="screen" id="screen-history">
+  <div class="topbar">
+    <div><div class="wordmark">RYZN</div><div class="topbar-sub">History</div></div>
+    <button class="icon-btn" onclick="goTo('home')"><i class="fa-solid fa-arrow-left"></i></button>
+  </div>
+  <div class="sh" style="padding-top:8px"><div class="sh-lbl">All Sessions</div><div class="sh-link" id="hist-count">0 sessions</div></div>
+  <div class="hist-list" id="hist-list">
+    <div style="text-align:center;padding:40px 22px;color:var(--text3);font-size:13px">No sessions logged yet.<br>Complete a session to see it here.</div>
+  </div>
+</div>
+
+<!-- ═══ GOALS ═══ -->
+<div class="screen" id="screen-goals">
+  <div class="topbar">
+    <div><div class="wordmark">RYZN</div><div class="topbar-sub">Your Goals</div></div>
+    <button class="icon-btn" onclick="goTo('goal-builder')"><i class="fa-solid fa-plus"></i></button>
+  </div>
+  <div class="goals-banner">
+    <div class="g-ring">
+      <svg width="76" height="76" viewBox="0 0 76 76">
+        <circle class="gr-bg" cx="38" cy="38" r="34"/>
+        <circle class="gr-fill" id="goalRingFill" cx="38" cy="38" r="34" stroke-dashoffset="54"/>
+      </svg>
+      <div class="g-ring-label"><span id="goal-ratio">3/4</span><small>done</small></div>
+    </div>
+    <div class="goals-banner-txt"><h3 id="goal-banner-hl">Almost there.</h3><p id="goal-banner-p">One goal left this week.<br>You've got this.</p></div>
+  </div>
+  <div class="sh"><div class="sh-lbl">Active Goals</div><div class="sh-link">History</div></div>
+  <div class="goals-list" id="goals-list"></div>
+  <button class="btn-add" onclick="goTo('goal-builder')"><i class="fa-solid fa-plus"></i> Add New Goal</button>
+</div>
+
+<!-- ═══ GOAL BUILDER ═══ -->
+<div class="screen" id="screen-goal-builder">
+  <div class="topbar">
+    <div><div class="wordmark">RYZN</div><div class="topbar-sub">New Goal</div></div>
+    <button class="icon-btn" onclick="goTo('goals')"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="goal-builder">
+    <div class="gb-title">Build Your Goal</div>
+    <div class="gb-field">
+      <div class="gb-label">Goal Name</div>
+      <input class="gb-input" id="gb-name" type="text" placeholder="e.g. Run 5km three times a week"/>
+    </div>
+    <div class="gb-field">
+      <div class="gb-label">Category</div>
+      <div class="gb-cats" id="gb-cats">
+        <button class="gb-cat active" onclick="selectCat(this)">Strength</button>
+        <button class="gb-cat" onclick="selectCat(this)">Cardio</button>
+        <button class="gb-cat" onclick="selectCat(this)">Nutrition</button>
+        <button class="gb-cat" onclick="selectCat(this)">Recovery</button>
+        <button class="gb-cat" onclick="selectCat(this)">Mindset</button>
+        <button class="gb-cat" onclick="selectCat(this)">Weight</button>
+      </div>
+    </div>
+    <div class="gb-row">
+      <div class="gb-field"><div class="gb-label">Target</div><input class="gb-input" id="gb-target" type="text" placeholder="e.g. 5 sessions"/></div>
+      <div class="gb-field"><div class="gb-label">Deadline</div><input class="gb-input" id="gb-deadline" type="text" placeholder="e.g. Jun 30"/></div>
+    </div>
+    <div class="gb-field"><div class="gb-label">Why this goal?</div><input class="gb-input" id="gb-why" type="text" placeholder="Your motivation..."/></div>
+    <button class="btn-create-goal" onclick="createGoal()"><i class="fa-solid fa-bullseye"></i>&nbsp; Create Goal</button>
+  </div>
+</div>
+
+<!-- ═══ ANALYTICS ═══ -->
+<div class="screen" id="screen-analytics">
+  <div class="topbar">
+    <div><div class="wordmark">RYZN</div><div class="topbar-sub">Performance</div></div>
+    <button class="icon-btn" onclick="goTo('profile')"><i class="fa-solid fa-arrow-left"></i></button>
+  </div>
+  <div class="an-hero">
+    <div class="an-eye">Overall Score</div>
+    <div class="an-row">
+      <div class="an-score" id="an-score">94<sub>/100</sub></div>
+      <div class="an-right"><div class="an-up" id="an-change"><i class="fa-solid fa-arrow-trend-up"></i> <span id="an-change-val">+6 this week</span></div><div class="an-vs" id="an-vs">vs last week: 88</div></div>
+    </div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-top"><div class="chart-lbl">Weekly Score</div><div class="chart-tabs"><button class="c-tab active">7D</button><button class="c-tab">1M</button><button class="c-tab">3M</button></div></div>
+    <div class="bar-chart" id="an-bar-chart"></div>
+  </div>
+  <div class="bd-grid">
+    <div class="bd-tile"><div class="bd-top"><div class="bd-ico acid"><i class="fa-solid fa-dumbbell"></i></div><span class="bd-trend" id="an-sess-trend">↑12%</span></div><div class="bd-val" id="an-sessions">12</div><div class="bd-lbl">Sessions</div></div>
+    <div class="bd-tile"><div class="bd-top"><div class="bd-ico green"><i class="fa-solid fa-fire"></i></div><span class="bd-trend" id="an-cal-trend">↑8%</span></div><div class="bd-val" id="an-calories">3,840</div><div class="bd-lbl">Calories</div></div>
+    <div class="bd-tile"><div class="bd-top"><div class="bd-ico blue"><i class="fa-solid fa-clock"></i></div><span class="bd-trend" id="an-time-trend">↑5%</span></div><div class="bd-val" id="an-time">9.2h</div><div class="bd-lbl">Active Time</div></div>
+    <div class="bd-tile"><div class="bd-top"><div class="bd-ico red"><i class="fa-solid fa-weight-scale"></i></div><span class="bd-trend" id="an-weight-trend">↓2%</span></div><div class="bd-val" id="an-weight">78.2</div><div class="bd-lbl">Avg Weight</div></div>
+  </div>
+  <div class="streak-card">
+    <div class="sh-lbl">June Streak</div>
+    <div class="streak-dots">
+      <div class="s-dot done">1</div><div class="s-dot done">2</div><div class="s-dot done">3</div><div class="s-dot">4</div><div class="s-dot done">5</div><div class="s-dot done">6</div><div class="s-dot done">7</div><div class="s-dot done">8</div><div class="s-dot done">9</div><div class="s-dot done">10</div><div class="s-dot">11</div><div class="s-dot done">12</div><div class="s-dot done">13</div><div class="s-dot done">14</div><div class="s-dot done">15</div><div class="s-dot done">16</div><div class="s-dot done">17</div><div class="s-dot done">18</div><div class="s-dot done">19</div><div class="s-dot done">20</div><div class="s-dot done">21</div><div class="s-dot done">22</div><div class="s-dot today">23</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ NUTRITION ═══ -->
+<div class="screen" id="screen-nutrition">
+  <div class="topbar">
+    <div><div class="wordmark">RYZN</div><div class="topbar-sub">Nutrition</div></div>
+    <button class="icon-btn"><i class="fa-solid fa-calendar-day"></i></button>
+  </div>
+  <div class="nut-hero">
+    <div class="nut-eye">Today's Fuel</div>
+    <div class="nut-title">Nutrition Hub</div>
+    <div class="nut-sub" id="nut-date">Loading...</div>
+  </div>
+  <div class="cal-ring-wrap">
+    <div class="cal-ring">
+      <svg width="150" height="150" viewBox="0 0 150 150">
+        <circle class="cr-bg" cx="75" cy="75" r="65"/>
+        <circle class="cr-fill" id="nut-cal-circle" cx="75" cy="75" r="65"/>
+      </svg>
+      <div class="cal-ring-inner">
+        <div class="cal-num" id="nut-cal-consumed">1,840</div>
+        <div class="cal-of" id="nut-cal-of">of 2,400 kcal</div>
+        <div class="cal-lbl">Consumed</div>
+      </div>
+    </div>
+  </div>
+  <div class="macro-row">
+    <div class="macro-card"><div class="macro-val" id="nut-protein-val" style="color:var(--blue)">142g</div><div class="macro-lbl">Protein</div><div class="macro-bar-bg"><div class="macro-bar-fill" id="nut-protein-bar" style="width:71%;background:var(--blue)"></div></div></div>
+    <div class="macro-card"><div class="macro-val" id="nut-carbs-val" style="color:var(--orange)">198g</div><div class="macro-lbl">Carbs</div><div class="macro-bar-bg"><div class="macro-bar-fill" id="nut-carbs-bar" style="width:66%;background:var(--orange)"></div></div></div>
+    <div class="macro-card"><div class="macro-val" id="nut-fats-val" style="color:var(--acid2)">54g</div><div class="macro-lbl">Fats</div><div class="macro-bar-bg"><div class="macro-bar-fill" id="nut-fats-bar" style="width:60%;background:var(--acid)"></div></div></div>
+  </div>
+  <div class="sh"><div class="sh-lbl">Today's Meals</div><div class="sh-link" onclick="openMealModal()">+ Log</div></div>
+  <div class="meal-list" id="meal-list"></div>
+  <div class="water-card">
+    <div class="sh-lbl">Hydration · <span id="water-count">6</span> / 8 glasses</div>
+    <div class="water-drops" id="waterDrops">
+      <div class="drop filled" onclick="toggleDrop(this)"><i class="fa-solid fa-droplet"></i></div>
+      <div class="drop filled" onclick="toggleDrop(this)"><i class="fa-solid fa-droplet"></i></div>
+      <div class="drop filled" onclick="toggleDrop(this)"><i class="fa-solid fa-droplet"></i></div>
+      <div class="drop filled" onclick="toggleDrop(this)"><i class="fa-solid fa-droplet"></i></div>
+      <div class="drop filled" onclick="toggleDrop(this)"><i class="fa-solid fa-droplet"></i></div>
+      <div class="drop filled" onclick="toggleDrop(this)"><i class="fa-solid fa-droplet"></i></div>
+      <div class="drop" onclick="toggleDrop(this)"><i class="fa-regular fa-droplet"></i></div>
+      <div class="drop" onclick="toggleDrop(this)"><i class="fa-regular fa-droplet"></i></div>
+    </div>
+  </div>
+  <button class="btn-log-meal" onclick="logMeal()"><i class="fa-solid fa-plus"></i> Log a Meal</button>
+</div>
+
+<!-- MEAL LOG MODAL -->
+<div class="modal-overlay" id="meal-modal" onclick="closeMealModalOnBg(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title">Log a Meal</div>
+      <button class="modal-close" onclick="closeMealModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-meal-type" id="meal-type-btns">
+        <button class="meal-type-btn active" data-type="Breakfast" onclick="selectMealType(this)">🌅 Breakfast</button>
+        <button class="meal-type-btn" data-type="Lunch" onclick="selectMealType(this)">☀️ Lunch</button>
+        <button class="meal-type-btn" data-type="Snack" onclick="selectMealType(this)">🥑 Snack</button>
+        <button class="meal-type-btn" data-type="Dinner" onclick="selectMealType(this)">🌙 Dinner</button>
+      </div>
+      <div class="modal-field">
+        <div class="modal-label">Meal / Food Name</div>
+        <input class="modal-input" id="ml-name" type="text" placeholder="e.g. Grilled chicken &amp; rice"/>
+      </div>
+      <div class="modal-field">
+        <div class="modal-label">Calories (kcal)</div>
+        <input class="modal-input" id="ml-cal" type="number" placeholder="e.g. 520" min="0" oninput="previewCalories()"/>
+      </div>
+      <div class="modal-macro-row">
+        <div class="modal-macro-field">
+          <div class="modal-label">Protein (g)</div>
+          <input class="modal-input" id="ml-protein" type="number" placeholder="40" min="0"/>
+        </div>
+        <div class="modal-macro-field">
+          <div class="modal-label">Carbs (g)</div>
+          <input class="modal-input" id="ml-carbs" type="number" placeholder="60" min="0"/>
+        </div>
+        <div class="modal-macro-field">
+          <div class="modal-label">Fats (g)</div>
+          <input class="modal-input" id="ml-fats" type="number" placeholder="15" min="0"/>
+        </div>
+      </div>
+      <div class="modal-cal-preview">
+        <div class="modal-cal-lbl">Calories this entry</div>
+        <div class="modal-cal-val" id="ml-cal-preview">0 kcal</div>
+      </div>
+      <button class="btn-submit-meal" onclick="submitMeal()"><i class="fa-solid fa-plus"></i> Add to Today</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ AI COACH ═══ -->
+<div class="screen" id="screen-coach">
+  <div class="topbar">
+    <div><div class="wordmark">RYZN</div><div class="topbar-sub">AI Coach</div></div>
+    <button class="icon-btn" onclick="clearChat()"><i class="fa-solid fa-rotate-left"></i></button>
+  </div>
+  <div class="coach-hero">
+    <div class="coach-eye">Powered by AI</div>
+    <div class="coach-title">Your Personal Coach</div>
+    <div class="coach-sub">Ask anything about training, nutrition,<br>recovery, or goal setting.</div>
+    <div class="coach-status"><div class="coach-dot"></div> Online · Ready</div>
+  </div>
+  <div class="chat-suggestions">
+    <button class="sug-btn" onclick="sendSuggestion(this)">Build muscle faster</button>
+    <button class="sug-btn" onclick="sendSuggestion(this)">Best pre-workout meal</button>
+    <button class="sug-btn" onclick="sendSuggestion(this)">Improve recovery</button>
+    <button class="sug-btn" onclick="sendSuggestion(this)">Stay consistent</button>
+  </div>
+  <div class="chat-window" id="chatWindow">
+    <div class="msg ai"><div class="msg-av ai"><i class="fa-solid fa-bolt"></i></div><div><div class="msg-bubble" id="coach-greeting">Hey! I'm your RYZN coach. I've reviewed your stats — you're performing at 94 this week, which is excellent. What can I help you with today?</div><div class="msg-time">Now</div></div></div>
+  </div>
+  <div class="chat-input-wrap">
+    <input class="chat-input" id="chatInput" type="text" placeholder="Ask your coach anything..." onkeydown="if(event.key==='Enter')sendMessage()"/>
+    <button class="chat-send" onclick="sendMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+  </div>
+</div>
+
+<!-- ═══ LEADERBOARD ═══ -->
+<div class="screen" id="screen-leaderboard">
+  <div class="topbar">
+    <div><div class="wordmark">RYZN</div><div class="topbar-sub">Leaderboard</div></div>
+    <button class="icon-btn" onclick="shareRank()" title="Share your rank"><i class="fa-solid fa-share-nodes"></i></button>
+  </div>
+  <div class="lb-hero">
+    <div class="sh-lbl" style="padding:0;margin-bottom:10px">Your Rank This Week</div>
+    <div class="lb-my-rank">
+      <div class="lb-rank-num" id="my-rank">#4</div>
+      <div class="lb-rank-info"><p id="lb-my-name">Alex Johnson</p><span>Score 94 · Top 15%</span></div>
+    </div>
+  </div>
+  <div class="sh" style="padding-top:14px"><div class="sh-lbl">Rankings</div></div>
+  <div class="lb-tabs">
+    <button class="lb-tab active">Weekly</button>
+    <button class="lb-tab">Monthly</button>
+    <button class="lb-tab">All Time</button>
+  </div>
+  <div class="lb-list" id="lb-list"></div>
+</div>
+
+<!-- ═══ NOTIFICATIONS ═══ -->
+<div class="screen" id="screen-notifications">
+  <div class="topbar">
+    <div><div class="wordmark">RYZN</div><div class="topbar-sub">Notifications</div></div>
+    <button class="icon-btn" onclick="markAllRead()"><i class="fa-solid fa-check-double"></i></button>
+  </div>
+  <div class="sh"><div class="sh-lbl">Recent</div><div class="sh-link" onclick="markAllRead()">Mark all read</div></div>
+  <div class="notif-list" id="notif-list"></div>
+</div>
+
+<!-- ═══ PROFILE ═══ -->
+<div class="screen" id="screen-profile">
+  <div class="topbar">
+    <div><div class="wordmark">RYZN</div><div class="topbar-sub">Your Profile</div></div>
+    <button class="icon-btn"><i class="fa-solid fa-share-nodes"></i></button>
+  </div>
+  <div class="prof-crown">
+    <div class="av-ring"><div class="av-inner" id="av-initials">AJ</div><div class="av-edit"><i class="fa-solid fa-pen"></i></div></div>
+    <div class="prof-name" id="prof-name">Alex Johnson</div>
+    <div class="prof-email" id="prof-email">alex.johnson@email.com</div>
+    <div class="prof-badge"><i class="fa-solid fa-crown"></i>&nbsp; Pro Member</div>
+  </div>
+  <div class="p-stats">
+    <div class="p-stat"><div class="p-stat-num" id="p-score">94</div><div class="p-stat-lbl">Score</div></div>
+    <div class="p-stat"><div class="p-stat-num" id="p-streak">7d</div><div class="p-stat-lbl">Streak</div></div>
+    <div class="p-stat"><div class="p-stat-num" id="p-sessions">12</div><div class="p-stat-lbl">Sessions</div></div>
+  </div>
+  <div class="sh" style="padding-top:18px"><div class="sh-lbl">Account</div></div>
+  <div class="menu-wrap">
+    <div class="menu-card">
+      <div class="menu-row" onclick="goTo('analytics')"><div class="m-ico" style="color:var(--acid2)"><i class="fa-solid fa-chart-line"></i></div><div class="m-body"><p>Analytics</p><span>Performance &amp; stats</span></div><i class="fa-solid fa-chevron-right m-chev"></i></div>
+      <div class="menu-row" onclick="goTo('leaderboard')"><div class="m-ico" style="color:var(--orange)"><i class="fa-solid fa-trophy"></i></div><div class="m-body"><p>Leaderboard</p><span>Your weekly rank</span></div><i class="fa-solid fa-chevron-right m-chev"></i></div>
+      <div class="menu-row" onclick="goTo('history')"><div class="m-ico" style="color:var(--green)"><i class="fa-solid fa-clock-rotate-left"></i></div><div class="m-body"><p>Session History</p><span>All past workouts</span></div><i class="fa-solid fa-chevron-right m-chev"></i></div>
+      <div class="menu-row" onclick="goTo('coach')"><div class="m-ico" style="color:var(--blue)"><i class="fa-solid fa-bolt"></i></div><div class="m-body"><p>AI Coach</p><span>Chat with your coach</span></div><i class="fa-solid fa-chevron-right m-chev"></i></div>
+      <div class="menu-row" onclick="goTo('settings')"><div class="m-ico"><i class="fa-solid fa-gear"></i></div><div class="m-body"><p>Settings</p><span>Preferences &amp; theme</span></div><i class="fa-solid fa-chevron-right m-chev"></i></div>
+    </div>
+  </div>
+  <button class="btn-edit-p" onclick="openEditProfileModal()"><i class="fa-solid fa-pen-to-square"></i> Edit Profile</button>
+</div>
+
+<!-- ═══ SETTINGS ═══ -->
+<div class="screen" id="screen-settings">
+  <div class="topbar">
+    <div><div class="wordmark">RYZN</div><div class="topbar-sub">Preferences</div></div>
+    <button class="icon-btn" onclick="goTo('profile')"><i class="fa-solid fa-arrow-left"></i></button>
+  </div>
+  <div class="set-head"><div class="set-title">Settings</div><div class="set-sub">Manage your experience</div></div>
+  <div class="sh" style="padding-top:18px"><div class="sh-lbl">Appearance</div></div>
+  <div style="padding:0 22px;margin-bottom:16px">
+    <div class="theme-preview">
+      <button class="theme-opt active" id="theme-dark" onclick="setTheme('dark')"><i class="fa-solid fa-moon"></i> Dark</button>
+      <button class="theme-opt" id="theme-light" onclick="setTheme('light')"><i class="fa-solid fa-sun"></i> Light</button>
+    </div>
+  </div>
+  <div class="sh" style="padding-top:4px"><div class="sh-lbl">Notifications</div></div>
+  <div class="tog-card">
+    <div class="tog-row"><div class="tog-l"><div class="t-ico"><i class="fa-solid fa-sun"></i></div><div class="t-inf"><p>Daily Reminders</p><span>Morning check-in nudge</span></div></div><label class="tog"><input type="checkbox" checked onchange="saveSettings()"/><div class="tog-track"></div><div class="tog-thumb"></div></label></div>
+    <div class="tog-row"><div class="tog-l"><div class="t-ico"><i class="fa-solid fa-bullseye"></i></div><div class="t-inf"><p>Goal Alerts</p><span>When close to a target</span></div></div><label class="tog"><input type="checkbox" checked onchange="saveSettings()"/><div class="tog-track"></div><div class="tog-thumb"></div></label></div>
+    <div class="tog-row"><div class="tog-l"><div class="t-ico"><i class="fa-solid fa-newspaper"></i></div><div class="t-inf"><p>Weekly Digest</p><span>Summary every Sunday</span></div></div><label class="tog"><input type="checkbox" onchange="saveSettings()"/><div class="tog-track"></div><div class="tog-thumb"></div></label></div>
+    <div class="tog-row"><div class="tog-l"><div class="t-ico"><i class="fa-solid fa-wand-magic-sparkles"></i></div><div class="t-inf"><p>Product Updates</p><span>New features and releases</span></div></div><label class="tog"><input type="checkbox" onchange="saveSettings()"/><div class="tog-track"></div><div class="tog-thumb"></div></label></div>
+  </div>
+  <button class="btn-logout" style="background:var(--blue-dim);border-color:rgba(91,163,224,.2);color:var(--blue);margin-bottom:8px" onclick="migrateLocalToCloud()">
+    <i class="fa-solid fa-cloud-arrow-up"></i> Sync Data to Cloud
+  </button>
+  <button class="btn-logout" onclick="logout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Log Out</button>
+  <div class="ver">RYZN · v4.0.0 · All features active</div>
+</div>
+
+<!-- ── BOTTOM NAV ── -->
+<nav class="bottom-nav" id="bottom-nav" style="display:none">
+  <button class="nav-btn active" id="nav-home" onclick="goTo('home')"><i class="fa-solid fa-house-chimney"></i>Home<div class="nav-pip"></div></button>
+  <button class="nav-btn" id="nav-goals" onclick="goTo('goals')"><i class="fa-solid fa-bullseye"></i>Goals<div class="nav-pip"></div></button>
+  <button class="nav-btn" id="nav-session" onclick="goTo('session')"><i class="fa-solid fa-play"></i>Train<div class="nav-pip"></div></button>
+  <button class="nav-btn" id="nav-nutrition" onclick="goTo('nutrition')"><i class="fa-solid fa-apple-whole"></i>Fuel<div class="nav-pip"></div></button>
+  <button class="nav-btn" id="nav-profile" onclick="goTo('profile')"><i class="fa-regular fa-circle-user"></i>Me<div class="nav-pip"></div></button>
+</nav>
+</div>
+<!-- EDIT PROFILE MODAL -->
+<div class="modal-overlay" id="edit-profile-modal" onclick="if(event.target===this)closeEditProfileModal()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title">Edit Profile</div>
+      <button class="modal-close" onclick="closeEditProfileModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:20px">
+        <div style="width:72px;height:72px;border-radius:50%;padding:2px;background:linear-gradient(135deg,var(--acid),var(--acid2),var(--acid3));margin-bottom:8px">
+          <div id="ep-initials-preview" style="width:100%;height:100%;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;color:var(--acid)">AJ</div>
+        </div>
+        <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-weight:600">Initials auto-generate from name</div>
+      </div>
+      <div class="modal-field">
+        <div class="modal-label">Full Name</div>
+        <input class="modal-input" id="ep-name" type="text" placeholder="e.g. Alex Johnson" oninput="(function(v){var el=document.getElementById('ep-initials-preview');if(el){var p=v.trim().split(/\s+/).filter(Boolean);el.textContent=p.length===1?p[0].slice(0,2).toUpperCase():(p[0][0]+(p[p.length-1][0])).toUpperCase()}})(this.value)"/>
+      </div>
+      <div class="modal-field">
+        <div class="modal-label">Email</div>
+        <input class="modal-input" id="ep-email" type="email" placeholder="you@email.com"/>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn-summary-discard" onclick="closeEditProfileModal()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+        <button class="btn-summary-save" onclick="saveEditProfile()"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+<script>
+const NAV_SCREENS = ['home','goals','session','nutrition','profile'];
+let timerSecs = 45*60, timerPaused = false, timerInterval = null;
+let obSlide = 0;
+
+function save(key, val) {
+  try { localStorage.setItem('ryzn_'+key, JSON.stringify(val)); } catch(e){}
+
+  if (window._fbUser) cloudPush(key, val).catch(() => {});
+}
+function load(key, def) {
+  try { const v = localStorage.getItem('ryzn_'+key); return v ? JSON.parse(v) : def; } catch(e){ return def; }
+}
+
+const CLOUD_COLLECTIONS = ['goals','sessions','meals','notifs'];
+
+async function cloudPush(key, val) {
+  if (!window._fbUser || !window._fb) return;
+  const { db, doc, setDoc, serverTimestamp } = window._fb;
+  const uid = window._fbUser.uid;
+  if (key === 'user') {
+    await setDoc(doc(db, 'users', uid, 'profile', 'data'),
+      { ...val, updatedAt: serverTimestamp() }, { merge: true });
+  } else if (CLOUD_COLLECTIONS.includes(key)) {
+    await setDoc(doc(db, 'users', uid, 'data', key),
+      { value: JSON.stringify(val), updatedAt: serverTimestamp() }, { merge: true });
+  }
+}
+
+async function cloudPull(uid) {
+  if (!window._fb) return;
+  const { db, doc, getDoc } = window._fb;
+  for (const key of CLOUD_COLLECTIONS) {
+    try {
+      const snap = await getDoc(doc(db, 'users', uid, 'data', key));
+      if (snap.exists() && snap.data().value) {
+        localStorage.setItem('ryzn_' + key, snap.data().value);
+      }
+    } catch(e) { console.warn('cloudPull', key, e.message); }
+  }
+}
+
+async function migrateLocalToCloud() {
+  if (!window._fbUser) return;
+  const hasLocal = CLOUD_COLLECTIONS.some(k => localStorage.getItem('ryzn_' + k));
+  if (!hasLocal) return;
+  if (!confirm('Sync your existing data to the cloud?')) return;
+  showToast('☁️ Syncing data…');
+  try {
+    const { db, doc, setDoc, serverTimestamp } = window._fb;
+    const uid = window._fbUser.uid;
+    for (const key of CLOUD_COLLECTIONS) {
+      const val = localStorage.getItem('ryzn_' + key);
+      if (val) {
+        await setDoc(doc(db, 'users', uid, 'data', key),
+          { value: val, updatedAt: serverTimestamp() }, { merge: true });
+      }
+    }
+    showToast('✅ Data synced to cloud!');
+  } catch(e) {
+    showToast('❌ Sync failed: ' + e.message);
+  }
+}
+
+window.addEventListener('load', () => {
+
+  const theme = load('theme', 'dark');
+  if (theme === 'light') applyTheme('light');
+
+  timerInterval = setInterval(tickTimer, 1000);
+
+  document.querySelectorAll('.c-tab').forEach(t => t.addEventListener('click', function(){
+    document.querySelectorAll('.c-tab').forEach(x=>x.classList.remove('active'));
+    this.classList.add('active');
+  }));
+  document.querySelectorAll('.lb-tab').forEach(t => t.addEventListener('click', function(){
+    document.querySelectorAll('.lb-tab').forEach(x=>x.classList.remove('active'));
+    this.classList.add('active');
+  }));
+
+  updateNutDate();
+
+  if (!window._fb) {
+    const loginScreen = document.getElementById('screen-login');
+    if (loginScreen) loginScreen.classList.add('active');
+  }
+});
+
+function initApp(user) {
+  if (!user) return;
+  const firstName = user.name ? user.name.split(' ')[0] : 'Alex';
+  const initials = user.name ? user.name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase() : 'AJ';
+  const hour = new Date().getHours();
+  const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('dash-greeting').textContent = greet + ', ' + firstName;
+  document.getElementById('prof-name').textContent = user.name || 'Alex Johnson';
+  document.getElementById('prof-email').textContent = user.email || 'alex@ryzn.app';
+  document.getElementById('av-initials').textContent = initials;
+  document.getElementById('lb-my-name').textContent = user.name || 'Alex Johnson';
+
+  const cg = document.getElementById('coach-greeting');
+  if (cg) cg.textContent = `Hey ${firstName}! I'm your RYZN coach. You're at 94 this week — excellent work. What can I help you with today?`;
+
+  const sessions = load('sessions', []);
+  document.getElementById('stat-sessions').textContent = sessions.length + 12;
+  document.getElementById('p-sessions').textContent = sessions.length + 12;
+  document.getElementById('an-sessions').textContent = sessions.length + 12;
+}
+
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
+  const screen = document.getElementById('screen-' + id);
+  if (!screen) return;
+  screen.classList.add('active');
+  const nb = document.getElementById('nav-' + id);
+  if (nb) nb.classList.add('active');
+  // Only show bottom-nav for app screens, not login/onboarding
+  const nav = document.getElementById('bottom-nav');
+  if (nav) nav.style.display = ['login','onboarding'].includes(id) ? 'none' : 'flex';
+  window.scrollTo(0, 0);
+  if (id === 'analytics') renderAnalytics();
+}
+
+function obGoTo(n) {
+
+  document.querySelectorAll('.ob-slide').forEach(s => s.classList.remove('active'));
+
+  const target = document.getElementById('ob-s' + n);
+  if (target) target.classList.add('active');
+
+  if (n === 2) {
+    setTimeout(() => {
+      const el = document.getElementById('ob-name');
+      if (el) el.focus();
+    }, 100);
+  }
+}
+
+function obToggleCat(el) {
+  el.classList.toggle('active');
+}
+
+function obFinish() {
+  const nameEl  = document.getElementById('ob-name');
+  const emailEl = document.getElementById('ob-email');
+  const name    = nameEl  ? nameEl.value.trim()  || 'Alex'           : 'Alex';
+  const email   = emailEl ? emailEl.value.trim() || 'alex@ryzn.app'  : 'alex@ryzn.app';
+
+  const user = { name, email, joined: new Date().toISOString() };
+  save('user', user);   
+
+  if (window._fbUser && window._fb) {
+    const { db, doc, setDoc, serverTimestamp } = window._fb;
+    setDoc(doc(window._fb.db, 'users', window._fbUser.uid, 'profile', 'data'),
+      { name, email, joined: user.joined, updatedAt: serverTimestamp() },
+      { merge: true }).catch(e => console.warn('profile push', e));
+  }
+
+  if (!load('goals', null)) {
+    save('goals', [
+      { id:1, name:'7-Day Streak',          desc:'Complete a session every day for 7 days',  cat:'Strength', target:'days',     current:7,   max:7,  done:true,  ico:'green', color:'green' },
+      { id:2, name:'Hit Score 90+',          desc:'Maintain a performance score above 90',    cat:'Mindset',  target:'score',    current:94,  max:94, done:true,  ico:'acid',  color:'acid'  },
+      { id:3, name:'10 Sessions This Month', desc:'Log at least 10 sessions in June',         cat:'Cardio',   target:'sessions', current:12,  max:10, done:true,  ico:'blue',  color:'blue'  },
+      { id:4, name:'Lose 3 kg',              desc:'Reach target body weight by end of month', cat:'Weight',   target:'kg',       current:1.8, max:3,  done:false, ico:'red',   color:'red'   },
+    ]);
+  }
+
+  initApp(user);
+  const nav = document.getElementById('bottom-nav');
+  if (nav) nav.style.display = 'flex';
+  goTo('home');
+  fireConfetti();
+  showToast('🎉 Welcome to RYZN, ' + name.split(' ')[0] + '!');
+}
+
+function goalIco(ico) {
+  const map = { green:'fire', acid:'star', blue:'dumbbell', red:'weight-scale', orange:'apple-whole' };
+  return map[ico] || 'bullseye';
+}
+
+function renderGoals() {
+  const goals = load('goals', []);
+  const list  = document.getElementById('goals-list');
+  if (!list) return;
+
+  if (goals.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);font-size:13px">No goals yet. Create your first one!</div>';
+    return;
+  }
+
+  const done   = goals.filter(g => g.done).length;
+  const ringPct = goals.length ? done / goals.length : 0;
+  const ring   = document.getElementById('goalRingFill');
+  if (ring) ring.style.strokeDashoffset = 214 * (1 - ringPct);
+  document.getElementById('goal-ratio').textContent = done + '/' + goals.length;
+
+  if (done === goals.length) {
+    document.getElementById('goal-banner-hl').textContent = 'All done!';
+    document.getElementById('goal-banner-p').textContent  = 'You crushed every goal. Time to set new ones.';
+  } else {
+    const left = goals.length - done;
+    document.getElementById('goal-banner-hl').textContent = done === 0 ? "Let's go." : 'Almost there.';
+    document.getElementById('goal-banner-p').textContent  = left + ' goal' + (left > 1 ? 's' : '') + ' left this week.';
+  }
+
+  list.innerHTML = goals.map(g => {
+    const pct      = Math.min(100, Math.round((g.current / g.max) * 100));
+    const complete = g.done || g.current >= g.max;
+    const cardCls  = complete ? 'done-card' : 'prog-card';
+    const tagCls   = complete ? 'done' : 'prog';
+    const tagLbl   = complete ? 'Complete ✓' : 'In Progress';
+    const plusDis  = complete ? 'disabled' : '';
+    const plusLbl  = complete ? '✓ Done' : `+1 <span style="font-size:10px;opacity:.7">${g.current}/${g.max}</span>`;
+
+    return `<div class="goal-card ${cardCls}" id="goal-card-${g.id}">
+      <div class="goal-head">
+        <div class="g-ico ${g.ico}"><i class="fa-solid fa-${goalIco(g.ico)}"></i></div>
+        <span class="g-tag ${tagCls}">${tagLbl}</span>
+      </div>
+      <div class="g-name">${g.name}</div>
+      <div class="g-desc">${g.desc}</div>
+      <div class="g-bar-bg">
+        <div class="g-bar-fill ${g.color}" id="goal-bar-${g.id}" style="width:${pct}%"></div>
+      </div>
+      <div class="goal-progress-row">
+        <div class="g-bar-meta">
+          <span id="goal-meta-${g.id}">${g.current} / ${g.max} ${g.target}</span>
+          <strong id="goal-pct-${g.id}">${pct}%</strong>
+        </div>
+        <button class="btn-plus" id="goal-btn-${g.id}" onclick="updateGoalProgress(${g.id}, event)" ${plusDis}>
+          ${plusLbl}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateGoalProgress(id, e) {
+  if (e) e.stopPropagation(); 
+
+  const goals = load('goals', []);
+  const g     = goals.find(x => x.id === id);
+  if (!g || g.done) return;
+
+  const wasComplete = g.current >= g.max;
+  g.current = Math.min(g.current + 1, g.max);
+  const newPct    = Math.min(100, Math.round((g.current / g.max) * 100));
+  const nowComplete = g.current >= g.max;
+
+  if (nowComplete) g.done = true;
+
+  save('goals', goals);
+
+  const barEl  = document.getElementById(`goal-bar-${id}`);
+  const metaEl = document.getElementById(`goal-meta-${id}`);
+  const pctEl  = document.getElementById(`goal-pct-${id}`);
+  const btnEl  = document.getElementById(`goal-btn-${id}`);
+  const cardEl = document.getElementById(`goal-card-${id}`);
+  const tagEl  = cardEl?.querySelector('.g-tag');
+
+  if (barEl)  barEl.style.width  = newPct + '%';
+  if (metaEl) metaEl.textContent = `${g.current} / ${g.max} ${g.target}`;
+  if (pctEl)  pctEl.textContent  = newPct + '%';
+
+  if (nowComplete && !wasComplete) {
+
+    if (cardEl) { cardEl.classList.remove('prog-card'); cardEl.classList.add('done-card'); }
+    if (tagEl)  { tagEl.classList.remove('prog'); tagEl.classList.add('done'); tagEl.textContent = 'Complete ✓'; }
+    if (btnEl)  { btnEl.disabled = true; btnEl.innerHTML = '✓ Done'; }
+
+    const allGoals = load('goals', []);
+    const done     = allGoals.filter(x => x.done).length;
+    const ring     = document.getElementById('goalRingFill');
+    if (ring) ring.style.strokeDashoffset = 214 * (1 - done / allGoals.length);
+    const ratioEl = document.getElementById('goal-ratio');
+    if (ratioEl) ratioEl.textContent = done + '/' + allGoals.length;
+
+    fireConfetti();
+    showToast('🎯 Goal completed: ' + g.name);
+    addNotif('🎯', 'Goal completed!', `You hit your goal: ${g.name}`, 'acid-dim');
+  } else {
+
+    if (newPct % 25 === 0 && newPct < 100) {
+      showToast(`📈 ${g.name}: ${newPct}% done`);
+    }
+
+    if (btnEl) btnEl.innerHTML = `+1 <span style="font-size:10px;opacity:.7">${g.current}/${g.max}</span>`;
+  }
+}
+
+function toggleGoal(id) {
+
+  const goals = load('goals', []);
+  const g     = goals.find(x => x.id === id);
+  if (!g) return;
+  g.done = !g.done;
+  if (!g.done && g.current >= g.max) g.current = g.max - 1; 
+  save('goals', goals);
+  renderGoals();
+  if (g.done) { fireConfetti(); showToast('🎯 Goal completed!'); addNotif('🎯', 'Goal completed!', `You completed: ${g.name}`, 'acid-dim'); }
+}
+
+function selectCat(el) { document.querySelectorAll('.gb-cat').forEach(c => c.classList.remove('active')); el.classList.add('active'); }
+
+function createGoal() {
+  const name = document.getElementById('gb-name').value.trim();
+  if (!name) { showToast('⚠️ Enter a goal name'); return; }
+  const cat = document.querySelector('.gb-cat.active')?.textContent || 'Strength';
+  const target = document.getElementById('gb-target').value.trim() || '1';
+  const deadline = document.getElementById('gb-deadline').value.trim() || 'End of month';
+  const goals = load('goals', []);
+  const colorMap = { Strength:'acid', Cardio:'green', Nutrition:'orange', Recovery:'blue', Mindset:'blue', Weight:'red' };
+  const icoMap = { Strength:'star', Cardio:'fire', Nutrition:'apple-whole', Recovery:'heart', Mindset:'brain', Weight:'weight-scale' };
+  goals.push({ id: Date.now(), name, desc: `${target} · ${deadline}`, cat, target, current:0, max:parseInt(target)||10, done:false, ico:colorMap[cat]||'acid', color:colorMap[cat]||'acid' });
+  save('goals', goals);
+  document.getElementById('gb-name').value = '';
+  document.getElementById('gb-target').value = '';
+  document.getElementById('gb-deadline').value = '';
+  renderGoals();
+  fireConfetti();
+  showToast('✅ Goal created!');
+  goTo('goals');
+}
+
+function tickTimer() {
+  if (timerPaused) return;
+  timerSecs = Math.max(0, timerSecs - 1);
+  const m = Math.floor(timerSecs/60).toString().padStart(2,'0');
+  const s = (timerSecs%60).toString().padStart(2,'0');
+  const el = document.getElementById('timerDisplay');
+  if (el) el.textContent = m+':'+s;
+  const circ = document.getElementById('timerCircle');
+  if (circ) circ.style.strokeDashoffset = (490 * (1 - (timerSecs / (45*60)))).toString();
+}
+
+function togglePause() {
+  timerPaused = !timerPaused;
+  const btn = document.getElementById('pauseBtn');
+  if (btn) btn.innerHTML = timerPaused ? '<i class="fa-solid fa-play"></i> Resume' : '<i class="fa-solid fa-pause"></i> Pause';
+}
+
+function endSession() {
+  const mins = Math.round((45*60 - timerSecs) / 60);
+  const sessions = load('sessions', []);
+  const newSession = {
+    id: Date.now(),
+    name: 'Strength & Power',
+    type: 'Upper Body · Intermediate',
+    date: new Date().toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}),
+    time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+    duration: Math.max(mins, 1) + ' min',
+    cal: 312,
+    exercises: 7,
+    score: 88 + Math.floor(Math.random()*10)
+  };
+  sessions.unshift(newSession);
+  save('sessions', sessions.slice(0, 50));
+  timerSecs = 45*60;
+  timerPaused = false;
+  const btn = document.getElementById('pauseBtn');
+  if (btn) btn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
+  renderHistory();
+  addNotif('💪', 'Session complete!', `${newSession.name} · ${newSession.duration}`, 'green-dim');
+  fireConfetti();
+  showToast('💪 Session saved!');
+  goTo('home');
+}
+
+function renderHistory() {
+  const sessions = load('sessions', []);
+  const list = document.getElementById('hist-list');
+  const count = document.getElementById('hist-count');
+  if (!list) return;
+  if (count) count.textContent = (sessions.length + 12) + ' sessions';
+  if (sessions.length === 0) { list.innerHTML = '<div style="text-align:center;padding:40px 22px;color:var(--text3);font-size:13px">No sessions logged yet.<br>Complete a session to see it here.</div>'; return; }
+  list.innerHTML = sessions.map(s => `
+    <div class="hist-card">
+      <div class="hist-top">
+        <div><div class="hist-name">${s.name}</div><div class="hist-date">${s.date} · ${s.time}</div></div>
+        <div class="hist-score">${s.score}</div>
+      </div>
+      <div class="hist-row">
+        <div class="hist-stat"><span>${s.duration}</span></div>
+        <div class="hist-stat"><span>${s.cal}</span> kcal</div>
+        <div class="hist-stat"><span>${s.exercises}</span> exercises</div>
+      </div>
+      <div class="hist-bar-bg"><div class="hist-bar-fill" style="width:${s.score}%"></div></div>
+    </div>`).join('');
+}
+
+const lbData = [
+  {rank:1, name:'Jordan Kim', score:98, av:'JK'}, {rank:2, name:'Sam Rivera', score:96, av:'SR'},
+  {rank:3, name:'Taylor Brooks', score:95, av:'TB'}, {rank:4, name:'YOU', score:94, av:'', you:true},
+  {rank:5, name:'Morgan Lee', score:91, av:'ML'}, {rank:6, name:'Casey Park', score:89, av:'CP'},
+  {rank:7, name:'Riley Chen', score:87, av:'RC'}, {rank:8, name:'Drew Patel', score:85, av:'DP'},
+  {rank:9, name:'Quinn Walsh', score:83, av:'QW'}, {rank:10, name:'Avery Stone', score:80, av:'AS'},
+];
+async function renderLeaderboard() {
+  const list = document.getElementById('lb-list');
+  if (!list) return;
+
+  const user     = load('user', null);
+  const sessions = load('sessions', []);
+  const userName = user?.name || 'You';
+  const userAv   = userName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+
+  const recentScores = sessions.slice(0, 5).map(s => s.score || 0).filter(s => s > 0);
+  const userScore    = recentScores.length
+    ? Math.round(recentScores.reduce((a,b)=>a+b,0) / recentScores.length)
+    : 94;
+
+  list.innerHTML = Array(5).fill(0).map(()=>`
+    <div class="lb-row" style="opacity:.3">
+      <div class="lb-pos" style="background:var(--surface3);border-radius:4px;width:20px;height:16px"></div>
+      <div class="lb-av" style="background:var(--surface3)"></div>
+      <div class="lb-body"><p style="background:var(--surface3);height:11px;border-radius:3px;width:80px"></p></div>
+      <div class="lb-score" style="background:var(--surface3);height:14px;border-radius:3px;width:26px"></div>
+    </div>`).join('');
+
+  let rows = [];
+
+  if (window._fb && window._fbUser) {
+    try {
+      const { db, collection, query, orderBy, limit, getDocs } = window._fb;
+      const q   = query(collection(db, 'leaderboard'), orderBy('score','desc'), limit(50));
+      const snp = await getDocs(q);
+      rows = snp.docs.map(d => ({
+        uid:   d.id,
+        name:  d.data().name  || 'Athlete',
+        score: d.data().score || 0,
+        av:    d.data().initials || d.data().name?.slice(0,2).toUpperCase() || '??',
+        you:   d.id === window._fbUser?.uid,
+      }));
+
+      const { doc, setDoc, serverTimestamp } = window._fb;
+      await setDoc(doc(db, 'leaderboard', window._fbUser.uid), {
+        name:      userName,
+        initials:  userAv,
+        score:     userScore,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    } catch(e) {
+      console.warn('Leaderboard Firestore error:', e.message);
+    }
+  }
+
+  const staticRows = [
+    { uid:'u1', name:'Jordan Kim',    score:98, av:'JK' },
+    { uid:'u2', name:'Sam Rivera',    score:96, av:'SR' },
+    { uid:'u3', name:'Taylor Brooks', score:95, av:'TB' },
+    { uid:'u5', name:'Morgan Lee',    score:91, av:'ML' },
+    { uid:'u6', name:'Casey Park',    score:89, av:'CP' },
+    { uid:'u7', name:'Riley Chen',    score:87, av:'RC' },
+    { uid:'u8', name:'Drew Patel',    score:85, av:'DP' },
+    { uid:'u9', name:'Quinn Walsh',   score:83, av:'QW' },
+    { uid:'u10',name:'Avery Stone',   score:80, av:'AS' },
+  ];
+  if (rows.length < 3) rows = staticRows;
+
+  const myIdx = rows.findIndex(r => r.you || r.uid === window._fbUser?.uid);
+  const meRow = { uid: window._fbUser?.uid || 'me', name: userName, score: userScore, av: userAv, you: true };
+  if (myIdx >= 0) rows[myIdx] = { ...rows[myIdx], ...meRow };
+  else {
+    const insertAt = rows.findIndex(r => r.score < userScore);
+    if (insertAt >= 0) rows.splice(insertAt, 0, meRow);
+    else rows.push(meRow);
+  }
+
+  rows = rows.sort((a,b)=>b.score-a.score).slice(0,10);
+  const myRank   = rows.findIndex(r=>r.you) + 1;
+  const posLabel = ['gold','silver','bronze'];
+
+  list.innerHTML = rows.map((p,i)=>`
+    <div class="lb-row ${p.you?'you':''}">
+      <div class="lb-pos ${i<3?posLabel[i]:''}">${i+1}</div>
+      <div class="lb-av">${p.av}</div>
+      <div class="lb-body"><p>${p.name}</p><span>${p.you?"That's you 🎯":"This week"}</span></div>
+      <div class="lb-score">${p.score}</div>
+    </div>`).join('');
+
+  const rankEl = document.getElementById('my-rank');
+  const nameEl = document.getElementById('lb-my-name');
+  if (rankEl) rankEl.textContent = myRank > 0 ? '#'+myRank : '#—';
+  if (nameEl) nameEl.textContent = userName;
+}
+let notifs = load('notifs', [
+  { id:1, ico:'🔥', title:'7-day streak!', body:'You have completed 7 sessions in a row. Keep it up!', time:'Today · 7:48 AM', unread:true, bg:'acid-dim' },
+  { id:2, ico:'🎯', title:'Goal hit: Score 90+', body:'Your score reached 94 this week. Excellent work.', time:'Today · 6:00 AM', unread:true, bg:'green-dim' },
+  { id:3, ico:'💪', title:'Weekly review ready', body:'Your performance summary for this week is available.', time:'Yesterday · 9:00 AM', unread:false, bg:'blue-dim' },
+  { id:4, ico:'🥗', title:'Nutrition tip', body:'You\'re 560 kcal short of your daily target. Time for dinner!', time:'Yesterday · 7:30 PM', unread:false, bg:'orange-dim' },
+]);
+
+function renderNotifications() {
+  const list = document.getElementById('notif-list');
+  const badge = document.getElementById('notif-badge');
+  if (!list) return;
+  const unread = notifs.filter(n => n.unread).length;
+  if (badge) badge.style.display = unread > 0 ? 'block' : 'none';
+  list.innerHTML = notifs.map(n => `
+    <div class="notif-row ${n.unread?'unread':''}" onclick="readNotif(${n.id})">
+      <div class="notif-ico" style="background:var(--${n.bg})">${n.ico}</div>
+      <div class="notif-body"><p>${n.title}</p><span>${n.body}</span><span style="margin-top:4px">${n.time}</span></div>
+      ${n.unread ? '<div class="notif-dot"></div>' : ''}
+    </div>`).join('');
+}
+
+function readNotif(id) { notifs = notifs.map(n => n.id===id ? {...n, unread:false} : n); save('notifs', notifs); renderNotifications(); }
+function markAllRead() { notifs = notifs.map(n => ({...n, unread:false})); save('notifs', notifs); renderNotifications(); showToast('All read'); }
+function addNotif(ico, title, body, bg) {
+  notifs.unshift({ id: Date.now(), ico, title, body, time: 'Just now', unread:true, bg: bg || 'acid-dim' });
+  save('notifs', notifs);
+  renderNotifications();
+}
+
+const NUT_TARGETS = { cal: 2400, protein: 200, carbs: 300, fats: 90 };
+
+const MEAL_TYPES = {
+  Breakfast: { ico: '🌅', bg: 'rgba(240,146,74,.1)', color: 'var(--orange)' },
+  Lunch:     { ico: '☀️', bg: 'rgba(91,163,224,.1)',  color: 'var(--blue)'   },
+  Snack:     { ico: '🥑', bg: 'rgba(63,207,130,.1)',  color: 'var(--green)'  },
+  Dinner:    { ico: '🌙', bg: 'rgba(232,255,71,.08)', color: 'var(--acid2)'  },
+};
+
+function initMeals() {
+  if (load('meals_date', null) !== new Date().toDateString()) {
+    save('meals_date', new Date().toDateString());
+    save('meals', [
+      { id:1, type:'Breakfast', name:'Oats, banana, protein shake', cal:620, protein:42, carbs:80, fats:12, time:'7:30 AM' },
+      { id:2, type:'Lunch',     name:'Grilled chicken, rice, salad', cal:780, protein:58, carbs:82, fats:18, time:'12:45 PM' },
+      { id:3, type:'Snack',     name:'Greek yogurt, almonds',       cal:280, protein:22, carbs:24, fats:14, time:'3:20 PM' },
+    ]);
+  }
+}
+
+function updateNutDate() {
+  const el = document.getElementById('nut-date');
+  if (el) el.textContent = new Date().toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long'}) + ' · On track';
+  initMeals();
+  renderMeals();
+}
+
+function renderMeals() {
+  const meals = load('meals', []);
+  const list  = document.getElementById('meal-list');
+  if (!list) return;
+
+  const totCal     = meals.reduce((a, m) => a + (m.cal     || 0), 0);
+  const totProtein = meals.reduce((a, m) => a + (m.protein || 0), 0);
+  const totCarbs   = meals.reduce((a, m) => a + (m.carbs   || 0), 0);
+  const totFats    = meals.reduce((a, m) => a + (m.fats    || 0), 0);
+
+  const calPct    = Math.min(totCal / NUT_TARGETS.cal, 1);
+  const dashTotal = 408; 
+  const circ = document.getElementById('nut-cal-circle');
+  if (circ) circ.style.strokeDashoffset = dashTotal * (1 - calPct);
+
+  const calEl = document.getElementById('nut-cal-consumed');
+  if (calEl) calEl.textContent = totCal.toLocaleString();
+  const calOfEl = document.getElementById('nut-cal-of');
+  if (calOfEl) calOfEl.textContent = `of ${NUT_TARGETS.cal.toLocaleString()} kcal`;
+
+  const setMacro = (valId, barId, val, target) => {
+    const pct = Math.min((val / target) * 100, 100);
+    const ve  = document.getElementById(valId);
+    const be  = document.getElementById(barId);
+    if (ve) ve.textContent = val + 'g';
+    if (be) be.style.width = pct + '%';
+  };
+  setMacro('nut-protein-val', 'nut-protein-bar', totProtein, NUT_TARGETS.protein);
+  setMacro('nut-carbs-val',   'nut-carbs-bar',   totCarbs,   NUT_TARGETS.carbs);
+  setMacro('nut-fats-val',    'nut-fats-bar',    totFats,    NUT_TARGETS.fats);
+
+  if (meals.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px">No meals logged yet today.</div>';
+    return;
+  }
+
+  list.innerHTML = meals.map(m => {
+    const cfg = MEAL_TYPES[m.type] || MEAL_TYPES.Snack;
+    return `<div class="meal-row" id="meal-row-${m.id}">
+      <div class="meal-ico" style="background:${cfg.bg};color:${cfg.color}">${cfg.ico}</div>
+      <div class="meal-body">
+        <p>${m.type} <span style="font-weight:400;color:var(--text3);font-size:11px">· ${m.time}</span></p>
+        <span>${m.name}</span>
+      </div>
+      <div style="text-align:right">
+        <div class="meal-cal">${m.cal}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">P:${m.protein}g C:${m.carbs}g F:${m.fats}g</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleDrop(el) {
+  el.classList.toggle('filled');
+  el.innerHTML = el.classList.contains('filled')
+    ? '<i class="fa-solid fa-droplet"></i>'
+    : '<i class="fa-regular fa-droplet"></i>';
+  const count = document.querySelectorAll('.drop.filled').length;
+  const el2   = document.getElementById('water-count');
+  if (el2) el2.textContent = count;
+}
+
+function suggestMealType() {
+  const h = new Date().getHours();
+  if (h < 10)       return 'Breakfast';
+  if (h < 14)       return 'Lunch';
+  if (h < 18)       return 'Snack';
+  return 'Dinner';
+}
+
+function openMealModal() {
+
+  const suggested = suggestMealType();
+  document.querySelectorAll('.meal-type-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.type === suggested);
+  });
+
+  ['ml-name','ml-cal','ml-protein','ml-carbs','ml-fats'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const prev = document.getElementById('ml-cal-preview');
+  if (prev) prev.textContent = '0 kcal';
+  document.getElementById('meal-modal').classList.add('open');
+}
+
+function closeMealModal() {
+  document.getElementById('meal-modal').classList.remove('open');
+}
+
+function closeMealModalOnBg(e) {
+  if (e.target === document.getElementById('meal-modal')) closeMealModal();
+}
+
+function selectMealType(el) {
+  document.querySelectorAll('.meal-type-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function previewCalories() {
+  const val  = parseInt(document.getElementById('ml-cal')?.value) || 0;
+  const prev = document.getElementById('ml-cal-preview');
+  if (prev) prev.textContent = val.toLocaleString() + ' kcal';
+}
+
+function submitMeal() {
+  const name    = document.getElementById('ml-name')?.value.trim();
+  const cal     = parseInt(document.getElementById('ml-cal')?.value)     || 0;
+  const protein = parseInt(document.getElementById('ml-protein')?.value) || 0;
+  const carbs   = parseInt(document.getElementById('ml-carbs')?.value)   || 0;
+  const fats    = parseInt(document.getElementById('ml-fats')?.value)    || 0;
+  const typeBtn = document.querySelector('.meal-type-btn.active');
+  const type    = typeBtn ? typeBtn.dataset.type : 'Snack';
+
+  if (!name)  { showToast('⚠️ Enter a meal name');     return; }
+  if (cal <= 0) { showToast('⚠️ Enter calories > 0'); return; }
+
+  const meals = load('meals', []);
+  const now   = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+  meals.push({ id: Date.now(), type, name, cal, protein, carbs, fats, time: now });
+  save('meals', meals);
+
+  closeMealModal();
+  renderMeals();
+  showToast(`🍽️ ${type} logged — ${cal} kcal`);
+  addNotif('🍽️', 'Meal logged', `${name} · ${cal} kcal`, 'orange-dim');
+}
+
+function logMeal() { openMealModal(); }
+
+let chatHistory = [];
+
+function buildSystemPrompt() {
+  const user     = load('user',     { name: 'Athlete' });
+  const sessions = load('sessions', []);
+  const goals    = load('goals',    []);
+  const name     = user.name ? user.name.split(' ')[0] : 'Athlete';
+  const sessCount  = sessions.length + 12;
+  const doneGoals  = goals.filter(g => g.done).length;
+  const totalGoals = goals.length || 4;
+  const lastSess   = sessions[0];
+  const lastInfo   = lastSess
+    ? `Last session: ${lastSess.name} on ${lastSess.date}, score ${lastSess.score}, ${lastSess.duration}, ${lastSess.cal} kcal.`
+    : 'No sessions logged yet.';
+
+  return `You are RYZN AI Coach — a world-class personal fitness coach embedded in the RYZN performance app.
+User profile:
+- Name: ${name}
+- Overall score: 94/100 (top 15% globally)
+- Sessions completed: ${sessCount}
+- Active streak: 7 days
+- Goals completed: ${doneGoals}/${totalGoals}
+- ${lastInfo}
+Instructions:
+- Be concise and direct — 2 to 3 sentences maximum per reply.
+- Be supportive but honest. No fluff, no filler.
+- Tailor advice to their actual data above.
+- If asked something unrelated to fitness, gently redirect.
+- Never say you are an AI assistant — you are RYZN Coach.`;
+}
+
+const fallbackReplies = {
+  default: [
+    "At score 94 you're in elite territory. Keep pushing progressive overload — add 2.5kg to your compounds every week and you'll stay ahead.",
+    "Recovery is where the gains actually happen. With your streak, make sure you're hitting 7-9 hours of sleep every night.",
+    "Your morning sessions are your strongest. Protect that time slot — it's when your output is highest.",
+    "For your weight goal, a 300-400 kcal deficit is the sweet spot alongside your current volume. Any more and your strength will suffer.",
+    "Your upper body is your strongest area. Balance it with more posterior chain work — Romanian deadlifts and face pulls twice a week.",
+  ],
+  muscle:      ["Progressive overload + 1.8g protein per kg bodyweight + 8hrs sleep. That's the full equation. You're already at 94 — stay consistent and the muscle follows."],
+  meal:        ["Eat 2-3hrs before training: 60-80g complex carbs and 30g lean protein. 30 mins out, a banana gives you the quick fuel spike. Skip anything high-fat pre-session."],
+  recovery:    ["8hrs sleep, protein within 30 mins post-session, 10 mins foam rolling daily. On rest days: a 20-minute walk keeps blood moving without taxing your CNS."],
+  consistency: ["Consistency beats intensity every time. On low-energy days, commit to just 10 minutes — you'll almost always do the full session. You've done 48+ sessions. That's the habit built. Protect it."],
+};
+
+function getFallback(msg) {
+  const m = msg.toLowerCase();
+  if (m.includes('muscle') || m.includes('build') || m.includes('size'))    return fallbackReplies.muscle[0];
+  if (m.includes('meal')   || m.includes('eat')   || m.includes('pre'))     return fallbackReplies.meal[0];
+  if (m.includes('recover')|| m.includes('rest')  || m.includes('sleep'))   return fallbackReplies.recovery[0];
+  if (m.includes('consist')|| m.includes('motiv') || m.includes('habit'))   return fallbackReplies.consistency[0];
+  return fallbackReplies.default[Math.floor(Math.random() * fallbackReplies.default.length)];
+}
+
+async function callClaudeAPI(userMessage) {
+  chatHistory.push({ role: 'user', content: userMessage });
+
+  const response = await fetch('/api/chat', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messages: [
+        { role: 'system', content: buildSystemPrompt() },
+        ...chatHistory,
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `HTTP ${response.status}`);
+  }
+
+  const data  = await response.json();
+  const reply = data.reply || getFallback(userMessage);
+
+  chatHistory.push({ role: 'assistant', content: reply });
+  if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+
+  return reply;
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const msg   = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  appendMsg(msg, 'user');
+  showTyping();
+
+  try {
+    const reply = await callClaudeAPI(msg);
+    removeTyping();
+    appendMsg(reply, 'ai');
+  } catch (err) {
+    removeTyping();
+    console.error('RYZN Coach API error:', err.message);
+    appendMsg("Connection issue — here's my offline take: " + getFallback(msg), 'ai');
+  }
+}
+
+async function sendSuggestion(el) {
+  const msg = el.textContent.trim();
+  appendMsg(msg, 'user');
+  showTyping();
+  try {
+    const reply = await callClaudeAPI(msg);
+    removeTyping();
+    appendMsg(reply, 'ai');
+  } catch (err) {
+    removeTyping();
+    appendMsg("Connection issue — here's my offline take: " + getFallback(msg), 'ai');
+  }
+}
+
+function appendMsg(text, role) {
+  const win = document.getElementById('chatWindow');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const av  = role === 'ai'
+    ? `<div class="msg-av ai"><i class="fa-solid fa-bolt"></i></div>`
+    : `<div class="msg-av user">${document.getElementById('av-initials')?.textContent || 'AJ'}</div>`;
+  div.innerHTML = `${av}<div><div class="msg-bubble">${text}</div><div class="msg-time">${now}</div></div>`;
+  win.appendChild(div);
+  win.scrollTop = win.scrollHeight;
+}
+
+function showTyping() {
+  const win = document.getElementById('chatWindow');
+  const div = document.createElement('div');
+  div.className = 'msg ai';
+  div.id = 'typing-indicator';
+  div.innerHTML = `<div class="msg-av ai"><i class="fa-solid fa-bolt"></i></div><div class="typing-bubble"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+  win.appendChild(div);
+  win.scrollTop = win.scrollHeight;
+}
+
+function removeTyping() {
+  const el = document.getElementById('typing-indicator');
+  if (el) el.remove();
+}
+
+function clearChat() {
+  chatHistory = [];
+  const win = document.getElementById('chatWindow');
+  const name = (load('user', {}).name || 'Athlete').split(' ')[0];
+  win.innerHTML = `<div class="msg ai"><div class="msg-av ai"><i class="fa-solid fa-bolt"></i></div><div><div class="msg-bubble">Chat cleared. Still here, ${name} — what do you need?</div><div class="msg-time">Now</div></div></div>`;
+}
+
+function setTheme(t) {
+  applyTheme(t);
+  save('theme', t);
+  document.getElementById('theme-dark').classList.toggle('active', t==='dark');
+  document.getElementById('theme-light').classList.toggle('active', t==='light');
+  showToast(t === 'light' ? '☀️ Light mode on' : '🌙 Dark mode on');
+}
+function applyTheme(t) {
+  document.getElementById('app').classList.toggle('light-mode', t==='light');
+  document.getElementById('theme-dark')?.classList.toggle('active', t==='dark');
+  document.getElementById('theme-light')?.classList.toggle('active', t==='light');
+}
+
+function saveSettings() { showToast('✓ Saved'); }
+
+function logout() {
+
+  if (window._fb && window._fbUser) {
+    window._fb.signOut(window._fb.auth).catch(() => {});
+  }
+  window._fbUser = null;
+
+  ['user','goals','sessions','meals','meals_date','notifs','theme','theme_pref'].forEach(k => {
+    try { localStorage.removeItem('ryzn_' + k); } catch(e) {}
+  });
+
+  ['ob-name','ob-email','login-email','login-password','login-fullname'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+
+  const errEl = document.getElementById('login-error');
+  if (errEl) errEl.textContent = '';
+
+  document.querySelectorAll('.ob-cat').forEach((b, i) => b.classList.toggle('active', i === 0));
+
+  const nav = document.getElementById('bottom-nav');
+  if (nav) nav.style.display = 'none';
+
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
+
+  const loginScreen = document.getElementById('screen-login');
+  if (loginScreen) loginScreen.classList.add('active');
+
+  window.scrollTo(0, 0);
+  showToast('👋 Logged out');
+}
+
+function fireConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  canvas.style.display = 'block';
+  const ctx = canvas.getContext('2d');
+  const colors = ['#e8ff47','#f2ff7a','#3fcf82','#5ba3e0','#f0924a','#ffffff','#e05252'];
+  const pieces = Array.from({length:130}, () => ({ x:Math.random()*canvas.width, y:Math.random()*canvas.height-canvas.height, w:Math.random()*8+4, h:Math.random()*14+6, color:colors[Math.floor(Math.random()*colors.length)], rot:Math.random()*360, vx:(Math.random()-.5)*4, vy:Math.random()*4+2, vr:(Math.random()-.5)*6 }));
+  let frame=0;
+  function draw() { ctx.clearRect(0,0,canvas.width,canvas.height); pieces.forEach(p=>{ ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot*Math.PI/180); ctx.fillStyle=p.color; ctx.globalAlpha=Math.max(0,1-frame/90); ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h); ctx.restore(); p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr; }); frame++; if(frame<100)requestAnimationFrame(draw); else{ctx.clearRect(0,0,canvas.width,canvas.height);canvas.style.display='none';} }
+  draw();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function renderAnalytics() {
+  const sessions = load('sessions', []);
+  const days     = ['M','T','W','T','F','S','S'];
+  const now      = new Date();
+
+  const barChart = document.getElementById('an-bar-chart');
+  if (sessions.length === 0) {
+    if (barChart) {
+      barChart.innerHTML = `<div style="width:100%;text-align:center;padding:24px 0;color:var(--text3);font-size:12px;letter-spacing:.06em">
+        <i class="fa-solid fa-chart-bar" style="font-size:24px;display:block;margin-bottom:8px;opacity:.4"></i>
+        Complete a session to see stats
+      </div>`;
+    }
+
+    const scoreEl = document.getElementById('an-score');
+    if (scoreEl) scoreEl.innerHTML = '—<sub>/100</sub>';
+    const changeVal = document.getElementById('an-change-val');
+    if (changeVal) changeVal.textContent = 'No data yet';
+    const vsEl = document.getElementById('an-vs');
+    if (vsEl) vsEl.textContent = 'Complete sessions to track progress';
+    ['an-sessions','an-calories','an-time','an-weight'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '—';
+    });
+    ['an-sess-trend','an-cal-trend','an-time-trend','an-weight-trend'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = '—'; el.className = 'bd-trend'; }
+    });
+    return;
+  }
+
+  const dayMap = {};
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    dayMap[d.toDateString()] = { score:0, cal:0, mins:0, count:0 };
+  }
+
+  sessions.forEach(s => {
+
+    let d;
+    try { d = new Date(s.date); } catch(e) { return; }
+    const key = d.toDateString();
+    if (dayMap[key] !== undefined) {
+      dayMap[key].score  = Math.max(dayMap[key].score, s.score || 0);
+      dayMap[key].cal   += (s.cal || 0);
+      dayMap[key].mins  += parseInt(s.duration) || 0;
+      dayMap[key].count += 1;
+    }
+  });
+
+  const dayKeys   = Object.keys(dayMap);
+  const dayScores = dayKeys.map(k => dayMap[k].score);
+  const todayKey  = now.toDateString();
+  const todayIdx  = dayKeys.indexOf(todayKey);
+
+  const maxScore = Math.max(...dayScores, 1);
+  if (barChart) {
+    barChart.innerHTML = dayScores.map((score, i) => {
+      const height   = score > 0 ? Math.round((score / 100) * 96) : 0;
+      const isToday  = i === todayIdx;
+      const cls      = score >= 90 ? 'hi' : score > 0 ? 'mid' : '';
+      const lblStyle = isToday ? 'color:var(--acid)' : '';
+      const emptyBar = score === 0
+        ? `<div class="bar" style="height:4px;background:var(--surface3);opacity:.4"></div>`
+        : `<div class="bar ${cls}" style="height:${height}px"></div>`;
+      return `<div class="b-col">${emptyBar}<div class="b-lbl" style="${lblStyle}">${days[i]}</div></div>`;
+    }).join('');
+  }
+
+  const thisWeek = sessions.filter(s => {
+    try { return (now - new Date(s.date)) / 86400000 <= 7; } catch(e) { return false; }
+  });
+  const lastWeek = sessions.filter(s => {
+    try { const age = (now - new Date(s.date)) / 86400000; return age > 7 && age <= 14; }
+    catch(e) { return false; }
+  });
+
+  const thisSess  = thisWeek.length;
+  const lastSess  = lastWeek.length;
+  const sessDiff  = thisSess - lastSess;
+  const sessTrend = sessDiff > 0 ? `↑${sessDiff}` : sessDiff < 0 ? `↓${Math.abs(sessDiff)}` : '—';
+
+  const thisCal  = thisWeek.reduce((a, s) => a + (s.cal || 0), 0);
+  const lastCal  = lastWeek.reduce((a, s) => a + (s.cal || 0), 0);
+  const calDiff  = lastCal > 0 ? Math.round(((thisCal - lastCal) / lastCal) * 100) : 0;
+  const calTrend = calDiff > 0 ? `↑${Math.abs(calDiff)}%` : calDiff < 0 ? `↓${Math.abs(calDiff)}%` : '—';
+
+  const thisMins  = thisWeek.reduce((a, s) => a + (parseInt(s.duration) || 0), 0);
+  const lastMins  = lastWeek.reduce((a, s) => a + (parseInt(s.duration) || 0), 0);
+  const timeDiff  = lastMins > 0 ? Math.round(((thisMins - lastMins) / lastMins) * 100) : 0;
+  const timeTrend = timeDiff > 0 ? `↑${Math.abs(timeDiff)}%` : timeDiff < 0 ? `↓${Math.abs(timeDiff)}%` : '—';
+  const activeHrs = thisMins > 0 ? (thisMins / 60).toFixed(1) + 'h' : '0h';
+
+  const realScores  = dayScores.filter(s => s > 0);
+  const avgScore    = realScores.length
+    ? Math.round(realScores.reduce((a, b) => a + b, 0) / realScores.length)
+    : sessions[0]?.score || 0;
+  const prevScores  = sessions.slice(5, 10).map(s => s.score || 0).filter(s => s > 0);
+  const prevAvg     = prevScores.length
+    ? Math.round(prevScores.reduce((a, b) => a + b, 0) / prevScores.length)
+    : avgScore;
+  const scoreDiff   = avgScore - prevAvg;
+
+  const set = (id, val, trendId, trend, isUp) => {
+    const el = document.getElementById(id);
+    const tr = document.getElementById(trendId);
+    if (el) el.textContent = val;
+    if (tr && trend !== '—') {
+      tr.textContent  = trend;
+      tr.className    = 'bd-trend ' + (isUp ? 'up' : 'dn');
+    } else if (tr) {
+      tr.textContent = '—';
+      tr.className   = 'bd-trend';
+    }
+  };
+
+  const scoreEl = document.getElementById('an-score');
+  if (scoreEl) scoreEl.innerHTML = `${avgScore}<sub>/100</sub>`;
+
+  const changeVal = document.getElementById('an-change-val');
+  if (changeVal) changeVal.textContent =
+    `${scoreDiff >= 0 ? '+' : ''}${scoreDiff} this week`;
+
+  const vsEl = document.getElementById('an-vs');
+  if (vsEl) vsEl.textContent = `vs prev period: ${prevAvg}`;
+
+  set('an-sessions', thisSess || '0',       'an-sess-trend',   sessTrend, sessDiff >= 0);
+  set('an-calories', thisCal.toLocaleString(),'an-cal-trend',   calTrend,  calDiff >= 0);
+  set('an-time',     activeHrs,              'an-time-trend',   timeTrend, timeDiff >= 0);
+  set('an-weight',   '78.2',                'an-weight-trend', '—', false);
+
+  ['stat-sessions','p-sessions'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = sessions.length;
+  });
+}
+
+function shareRank() {
+  const sessions = load('sessions', []);
+  const user     = load('user', {});
+
+  const recentScores = sessions.slice(0, 5).map(s => s.score || 0).filter(s => s > 0);
+  const userScore    = recentScores.length
+    ? Math.round(recentScores.reduce((a, b) => a + b, 0) / recentScores.length)
+    : 94;
+
+  const rankEl   = document.getElementById('my-rank');
+  const rankText = rankEl ? rankEl.textContent.replace('#', '') : '4';
+  const name     = user.name ? user.name.split(' ')[0] : 'Me';
+
+  const shareMsg = `My RYZN rank is #${rankText} with score ${userScore}! Can you beat me? 💪🔥 #RYZN`;
+
+  if (navigator.share) {
+    navigator.share({
+      title: 'RYZN Leaderboard',
+      text:  shareMsg,
+      url:   window.location.href,
+    }).catch(() => {
+
+    });
+  } else {
+
+    navigator.clipboard.writeText(shareMsg).then(() => {
+      showToast('📋 Rank copied to clipboard!');
+    }).catch(() => {
+
+      prompt('Copy your rank:', shareMsg);
+    });
+  }
+}
+
+let _loginMode = 'signin'; 
+
+function switchLoginTab(mode) {
+  _loginMode = mode;
+  document.getElementById('tab-signin').classList.toggle('active', mode === 'signin');
+  document.getElementById('tab-signup').classList.toggle('active', mode === 'signup');
+  document.getElementById('login-btn-label').textContent = mode === 'signin' ? 'Sign In' : 'Create Account';
+  document.getElementById('signup-name-field').style.display = mode === 'signup' ? 'block' : 'none';
+  document.getElementById('login-error').textContent = '';
+
+  const pwField = document.getElementById('login-password');
+  if (pwField) pwField.autocomplete = mode === 'signin' ? 'current-password' : 'new-password';
+}
+
+async function handleAuth() {
+  const email    = document.getElementById('login-email')?.value.trim();
+  const password = document.getElementById('login-password')?.value;
+  const fullName = document.getElementById('login-fullname')?.value.trim();
+  const errEl    = document.getElementById('login-error');
+  const btn      = document.getElementById('login-btn');
+
+  if (errEl) errEl.textContent = '';
+
+  if (!email || !password) { if (errEl) errEl.textContent = 'Email and password are required.'; return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if (errEl) errEl.textContent = 'Enter a valid email.'; return; }
+  if (password.length < 6) { if (errEl) errEl.textContent = 'Password must be at least 6 characters.'; return; }
+  if (_loginMode === 'signup' && !fullName) { if (errEl) errEl.textContent = 'Enter your full name.'; return; }
+
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Please wait…'; }
+
+  const resetBtn = () => {
+    if (!btn) return;
+    btn.disabled = false;
+    btn.innerHTML = \`<i class="fa-solid fa-bolt"></i> <span id="login-btn-label">\${_loginMode === 'signin' ? 'Sign In' : 'Create Account'}</span>\`;
+  };
+
+  try {
+    if (!window._fb) throw new Error('Firebase not ready. Please refresh and try again.');
+
+    if (_loginMode === 'signup') {
+      // 1. Create Firebase Auth user
+      const cred = await window._fb.createUserWithEmailAndPassword(
+        window._fb.auth, email, password);
+
+      // 2. Write profile doc to Firestore
+      const { db, doc, setDoc, serverTimestamp } = window._fb;
+      await setDoc(doc(db, 'users', cred.user.uid, 'profile', 'data'), {
+        name:      fullName,
+        email,
+        joined:    new Date().toISOString(),
+        updatedAt: serverTimestamp(),
+      });
+
+      // 3. Save locally and flag as new user
+      if (typeof save === 'function') save('user', { name: fullName, email, joined: new Date().toISOString() });
+      window._fbNewUser = true;
+      // onAuthStateChanged will fire next and call goTo('onboarding')
+
+    } else {
+      // Sign in — onAuthStateChanged will fire and call goTo('home')
+      await window._fb.signInWithEmailAndPassword(window._fb.auth, email, password);
+    }
+
+    // Button stays in loading state — onAuthStateChanged redirect will happen momentarily
+    // If something goes wrong and no redirect occurs within 8s, reset the button
+    setTimeout(resetBtn, 8000);
+
+  } catch(e) {
+    console.error('Auth error:', e);
+    const msg = firebaseAuthError(e.code || e.message);
+    if (errEl) errEl.textContent = msg;
+    resetBtn();
+  }
+}
+
+function firebaseAuthError(code) {
+  const map = {
+    'auth/user-not-found':      'No account found with this email.',
+    'auth/wrong-password':      'Incorrect password.',
+    'auth/email-already-in-use':'An account with this email already exists.',
+    'auth/invalid-email':       'Invalid email address.',
+    'auth/too-many-requests':   'Too many attempts. Try again later.',
+    'auth/network-request-failed':'Network error. Check your connection.',
+    'auth/weak-password':       'Password should be at least 6 characters.',
+    'auth/invalid-credential':  'Incorrect email or password.',
+  };
+  return map[code] || 'Something went wrong. Please try again.';
+}
+
+async function handleForgotPassword() {
+  const email = document.getElementById('login-email')?.value.trim();
+  if (!email) { showToast('⚠️ Enter your email first'); return; }
+  if (!window._fb) { showToast('⚠️ Firebase not ready'); return; }
+  try {
+    const { sendPasswordResetEmail } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+    await sendPasswordResetEmail(window._fb.auth, email);
+    showToast('📧 Reset email sent — check your inbox');
+  } catch(e) {
+    showToast('❌ ' + firebaseAuthError(e.code));
+  }
+}
+
+async function checkAndMigrateData() {
+  if (!window._fbUser) return;
+  const hasLocal = ['goals','sessions','meals','notifs'].some(
+    k => localStorage.getItem('ryzn_' + k)
+  );
+  if (!hasLocal) return;
+
+  const toast = document.getElementById('toast');
+  if (toast) {
+    toast.innerHTML = '☁️ Sync local data to cloud? <span style="text-decoration:underline;cursor:pointer;margin-left:6px" onclick="migrateLocalToCloud()">Sync now</span>';
+    toast.classList.add('show');
+    setTimeout(() => {
+      toast.classList.remove('show');
+      toast.innerHTML = '';
+    }, 6000);
+  }
+}
+
+/* ── EDIT PROFILE ── */
+function computeInitials(name){
+  if(!name||!name.trim())return'RZ';
+  var p=name.trim().split(/\s+/).filter(Boolean);
+  return p.length===1?p[0].slice(0,2).toUpperCase():(p[0][0]+p[p.length-1][0]).toUpperCase();
+}
+function openEditProfileModal(){
+  var user=load('user',{});
+  var ne=document.getElementById('ep-name'); if(ne) ne.value=user.name||'';
+  var ee=document.getElementById('ep-email'); if(ee) ee.value=user.email||'';
+  var pe=document.getElementById('ep-initials-preview'); if(pe) pe.textContent=computeInitials(user.name)||'AJ';
+  document.getElementById('edit-profile-modal').classList.add('open');
+  setTimeout(function(){var el=document.getElementById('ep-name');if(el)el.focus();},320);
+}
+function closeEditProfileModal(){
+  document.getElementById('edit-profile-modal').classList.remove('open');
+}
+function saveEditProfile(){
+  var name=document.getElementById('ep-name')?.value.trim();
+  var email=document.getElementById('ep-email')?.value.trim();
+  if(!name){showToast('⚠️ Name cannot be empty');return;}
+  if(!email){showToast('⚠️ Email cannot be empty');return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){showToast('⚠️ Enter a valid email');return;}
+  var user=load('user',{}); user.name=name; user.email=email; save('user',user);
+  var initials=computeInitials(name), firstName=name.split(' ')[0];
+  var h=new Date().getHours(), g=h<12?'Good morning':h<17?'Good afternoon':'Good evening';
+  [['prof-name',name],['prof-email',email],['av-initials',initials],['lb-my-name',name],['dash-greeting',g+', '+firstName]].forEach(function(pair){
+    var el=document.getElementById(pair[0]); if(el) el.textContent=pair[1];
+  });
+  var cg=document.getElementById('coach-greeting-text');
+  if(cg) cg.textContent='Hey '+firstName+"! I'm your RYZN coach. What can I help you with today?";
+  document.querySelectorAll('.msg-av.user').forEach(function(el){el.textContent=initials;});
+  if(window._fbUser&&window._fb){
+    var d=window._fb,uid=window._fbUser.uid;
+    d.setDoc(d.doc(d.db,'users',uid,'profile','data'),{name:name,email:email,updatedAt:d.serverTimestamp()},{merge:true}).catch(function(){});
+  }
+  closeEditProfileModal();
+  showToast('✅ Profile updated');
+  addNotif('✏️','Profile updated','Name set to '+name,'acid-dim');
+}
+</script>
+</body>
+</html>
